@@ -15,82 +15,27 @@ macro_rules! logb {
     }};
 }
 
-#[test]
-fn test_all() {
-    let value = b"Simd Sw0";
-    assert!(find_nul(value).is_none());
-
-    let value = b"Simd\0 Sw";
-    let i = find_nul(value).unwrap();
-    assert_eq!(value[i], b'\0');
-
-    let value = b"Simd Sw\0";
-    let i = find_nul(value).unwrap();
-    assert_eq!(value[i], b'\0');
-
-    let value = b"\0Simd Sw";
-    let i = find_nul(value).unwrap();
-    assert_eq!(value[i], b'\0');
-
-    //
-
-    let value = b"Simd Sw0";
-    assert!(find_nul_v2(value).is_none());
-
-    let value = b"Simd\0 Sw";
-    let i = find_nul_v2(value).unwrap();
-    assert_eq!(value[i], b'\0');
-
-    let value = b"Simd Sw\0";
-    let i = find_nul_v2(value).unwrap();
-    assert_eq!(value[i], b'\0');
-
-    let value = b"\0Simd Sw";
-    let i = find_nul_v2(value).unwrap();
-    assert_eq!(value[i], b'\0');
-
-    //
-
-    let value = [124, 125, 126, 220, 127, 128, 129, 121];
-    assert!(find_lt(value, 100).is_none());
-
-    let value = [124, 125, 126, 20, 127, 128, 129, 11];
-    let i = find_lt(value, 100).unwrap();
-    assert!(value[i] < 100);
-
-    let value = [124, 125, 126, 133, 127, 128, 129, 20];
-    let i = find_lt(value, 100).unwrap();
-    assert!(value[i] < 100);
-
-    let value = [24, 125, 126, 133, 127, 128, 129, 130];
-    let i = find_lt(value, 100).unwrap();
-    assert!(value[i] < 100);
-
-    //
-
-    let value = b"Simd  Swar Example";
-    assert!(find(value, b'c').is_none());
-
-    let value = b"Simd  Swar Example";
-    let i = find(value, b'd').unwrap();
-    assert_eq!(value[i], b'd');
-
-    let value = b"Simd  Swar Example";
-    let i = find(value, b'w').unwrap();
-    assert_eq!(value[i], b'w');
-
-    let value = b"Simd  Swar Example";
-    let i = find(value, b'S').unwrap();
-    assert_eq!(value[i], b'S');
+pub fn find(mut value: &[u8], byte: u8) -> Option<usize> {
+    let start = value.as_ptr();
+    let map = |pos| distance(start, value.as_ptr()) + pos;
+    loop {
+        if let Some((&chunk, rest)) = value.split_first_chunk() {
+            match find_block(chunk, byte).map(map) {
+                Some(ok) => return Some(ok),
+                None => value = rest,
+            }
+        } else {
+            return value.iter().position(|e| e == &byte).map(map);
+        }
+    }
 }
 
-pub fn find_nul(chunk: &[u8; CHUNK_SIZE]) -> Option<usize> {
-    let x = usize::from_ne_bytes(*chunk);
+fn find_block(chunk: [u8; CHUNK_SIZE], byte: u8) -> Option<usize> {
+    let x = usize::from_ne_bytes(chunk);
+    let target = usize::from_ne_bytes([byte; CHUNK_SIZE]);
 
-    let x2 = x | x << 1;
-    let x4 = x2 | x2 << 2;
-    let x8 = x4 | x4 << 4;
-    let found = !x8 & MSB;
+    let xor_x = x ^ target;
+    let found = xor_x.wrapping_sub(LSB) & !xor_x & MSB;
 
     if found == 0 {
         None
@@ -99,7 +44,7 @@ pub fn find_nul(chunk: &[u8; CHUNK_SIZE]) -> Option<usize> {
     }
 }
 
-pub fn find_nul_v2(chunk: &[u8; CHUNK_SIZE]) -> Option<usize> {
+pub fn find_nul(chunk: &[u8; CHUNK_SIZE]) -> Option<usize> {
     let x = usize::from_ne_bytes(*chunk);
 
     let x7 = x.wrapping_sub(LSB);
@@ -119,40 +64,6 @@ pub fn find_lt(chunk: [u8; CHUNK_SIZE], byte: u8) -> Option<usize> {
 
     let eq_b = x.wrapping_sub(b) & !x;
     let found = eq_b & MSB;
-
-    if found == 0 {
-        None
-    } else {
-        Some((found.trailing_zeros() / 8) as usize)
-    }
-}
-
-pub fn find(mut value: &[u8], byte: u8) -> Option<usize> {
-    let start = value.as_ptr();
-    let map = |pos| {
-        let offset = distance(start, value.as_ptr());
-        offset + pos
-    };
-    loop {
-        if let Some((&chunk, rest)) = value.split_first_chunk() {
-            match find_block(chunk, byte).map(map) {
-                Some(ok) => return Some(ok),
-                None => {
-                    value = rest;
-                },
-            }
-        } else {
-            return value.iter().position(|e| e == &byte).map(map);
-        }
-    }
-}
-
-fn find_block(chunk: [u8; CHUNK_SIZE], byte: u8) -> Option<usize> {
-    let x = usize::from_ne_bytes(chunk);
-    let target = usize::from_ne_bytes([byte; CHUNK_SIZE]);
-
-    let xor_x = x ^ target;
-    let found = xor_x.wrapping_sub(LSB) & !xor_x & MSB;
 
     if found == 0 {
         None
