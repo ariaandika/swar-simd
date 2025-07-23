@@ -15,7 +15,8 @@ macro_rules! logb {
     }};
 }
 
-fn main() {
+#[test]
+fn test_all() {
     let value = b"Simd Sw0";
     assert!(find_nul(value).is_none());
 
@@ -67,23 +68,23 @@ fn main() {
 
     //
 
-    let value = *b"Simd  Sw";
+    let value = b"Simd  Swar Example";
     assert!(find(value, b'c').is_none());
 
-    let value = *b"Simd  Sw";
+    let value = b"Simd  Swar Example";
     let i = find(value, b'd').unwrap();
     assert_eq!(value[i], b'd');
 
-    let value = *b"Simd  Sw";
+    let value = b"Simd  Swar Example";
     let i = find(value, b'w').unwrap();
     assert_eq!(value[i], b'w');
 
-    let value = *b"Simd  Sw";
+    let value = b"Simd  Swar Example";
     let i = find(value, b'S').unwrap();
     assert_eq!(value[i], b'S');
 }
 
-fn find_nul(chunk: &[u8; CHUNK_SIZE]) -> Option<usize> {
+pub fn find_nul(chunk: &[u8; CHUNK_SIZE]) -> Option<usize> {
     let x = usize::from_ne_bytes(*chunk);
 
     let x2 = x | x << 1;
@@ -98,7 +99,7 @@ fn find_nul(chunk: &[u8; CHUNK_SIZE]) -> Option<usize> {
     }
 }
 
-fn find_nul_v2(chunk: &[u8; CHUNK_SIZE]) -> Option<usize> {
+pub fn find_nul_v2(chunk: &[u8; CHUNK_SIZE]) -> Option<usize> {
     let x = usize::from_ne_bytes(*chunk);
 
     let x7 = x.wrapping_sub(LSB);
@@ -112,7 +113,7 @@ fn find_nul_v2(chunk: &[u8; CHUNK_SIZE]) -> Option<usize> {
 }
 
 /// Find the first byte that less than
-fn find_lt(chunk: [u8; CHUNK_SIZE], byte: u8) -> Option<usize> {
+pub fn find_lt(chunk: [u8; CHUNK_SIZE], byte: u8) -> Option<usize> {
     let x = usize::from_ne_bytes(chunk);
     let b = usize::from_ne_bytes([byte; CHUNK_SIZE]);
 
@@ -126,7 +127,27 @@ fn find_lt(chunk: [u8; CHUNK_SIZE], byte: u8) -> Option<usize> {
     }
 }
 
-fn find(chunk: [u8; CHUNK_SIZE], byte: u8) -> Option<usize> {
+pub fn find(mut value: &[u8], byte: u8) -> Option<usize> {
+    let start = value.as_ptr();
+    let map = |pos| {
+        let offset = distance(start, value.as_ptr());
+        offset + pos
+    };
+    loop {
+        if let Some((&chunk, rest)) = value.split_first_chunk() {
+            match find_block(chunk, byte).map(map) {
+                Some(ok) => return Some(ok),
+                None => {
+                    value = rest;
+                },
+            }
+        } else {
+            return value.iter().position(|e| e == &byte).map(map);
+        }
+    }
+}
+
+fn find_block(chunk: [u8; CHUNK_SIZE], byte: u8) -> Option<usize> {
     let x = usize::from_ne_bytes(chunk);
     let target = usize::from_ne_bytes([byte; CHUNK_SIZE]);
 
@@ -138,4 +159,8 @@ fn find(chunk: [u8; CHUNK_SIZE], byte: u8) -> Option<usize> {
     } else {
         Some((found.trailing_zeros() / 8) as usize)
     }
+}
+
+fn distance(start: *const u8, end: *const u8) -> usize {
+    unsafe { usize::try_from(end.offset_from(start)).unwrap_unchecked() }
 }

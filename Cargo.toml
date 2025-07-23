@@ -5,6 +5,9 @@ edition = "2024"
 
 [dependencies]
 
-[[bin]]
-name = "swar"
-path = "swar.rs"
+[dev-dependencies]
+criterion = "0.6.0"
+
+[[bench]]
+name = "find"
+harness = false
