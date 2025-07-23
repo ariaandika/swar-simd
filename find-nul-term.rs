@@ -30,6 +30,23 @@ fn main() {
 
     //
 
+    let value = b"Simd Sw0";
+    assert!(find_nul_v2(value).is_none());
+
+    let value = b"Simd\0 Sw";
+    let i = find_nul_v2(value).unwrap();
+    assert_eq!(value[i], b'\0');
+
+    let value = b"Simd Sw\0";
+    let i = find_nul_v2(value).unwrap();
+    assert_eq!(value[i], b'\0');
+
+    let value = b"\0Simd Sw";
+    let i = find_nul_v2(value).unwrap();
+    assert_eq!(value[i], b'\0');
+
+    //
+
     let value = [124, 125, 126, 220, 127, 128, 129, 121];
     assert!(find_lt(value, 100).is_none());
 
@@ -53,6 +70,19 @@ fn find_nul(chunk: &[u8; CHUNK_SIZE]) -> Option<usize> {
     let x4 = x2 | x2 << 2;
     let x8 = x4 | x4 << 4;
     let found = !x8 & 0x8080808080808080;
+
+    if found == 0 {
+        None
+    } else {
+        Some((found.trailing_zeros() / 8) as usize)
+    }
+}
+
+fn find_nul_v2(chunk: &[u8; CHUNK_SIZE]) -> Option<usize> {
+    let x = usize::from_ne_bytes(*chunk);
+
+    let x7 = x.wrapping_sub(0x0101010101010101);
+    let found = x7 & !x & 0x8080808080808080;
 
     if found == 0 {
         None
