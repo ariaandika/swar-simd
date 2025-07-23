@@ -1,0 +1,10 @@
+[package]
+name = "swar-simd"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+
+[[bin]]
+name = "find-nul-term"
+path = "find-nul-term.rs"
