@@ -1,5 +1,17 @@
 const CHUNK_SIZE: usize = size_of::<usize>();
 
+#[allow(unused)]
+macro_rules! logb {
+    ($($tt:tt)*) => {{
+        let res = $($tt)*;
+        for b in res.to_ne_bytes() {
+            print!("{b:0>8b} ");
+        }
+        println!();
+        res
+    }};
+}
+
 fn main() {
     let value = b"Si\0md Sw";
 
