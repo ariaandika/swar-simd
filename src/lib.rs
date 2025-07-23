@@ -15,33 +15,58 @@ macro_rules! logb {
     }};
 }
 
-pub fn find(mut value: &[u8], byte: u8) -> Option<usize> {
-    let start = value.as_ptr();
-    let map = |pos| distance(start, value.as_ptr()) + pos;
-    loop {
-        if let Some((&chunk, rest)) = value.split_first_chunk() {
-            match find_block(chunk, byte).map(map) {
-                Some(ok) => return Some(ok),
-                None => value = rest,
-            }
-        } else {
-            return value.iter().position(|e| e == &byte).map(map);
-        }
-    }
+pub fn find(value: &[u8], byte: u8) -> Option<usize> {
+    unsafe { find_raw(value.as_ptr(), value.as_ptr().add(value.len()), byte) }
 }
 
-fn find_block(chunk: [u8; CHUNK_SIZE], byte: u8) -> Option<usize> {
-    let x = usize::from_ne_bytes(chunk);
+/// Find byte between raw pointer.
+///
+/// # Safety
+///
+/// The `start` pointer must be valid until the pointer right before `end`. The end pointer is
+/// exclusive, just one byte after the last byte.
+pub unsafe fn find_raw(start: *const u8, end: *const u8, byte: u8) -> Option<usize> {
+    const CHUNK_SIZE: usize = size_of::<usize>();
+    const LSB: usize = usize::from_ne_bytes([1; CHUNK_SIZE]);
+    const MSB: usize = usize::from_ne_bytes([128; CHUNK_SIZE]);
+
     let target = usize::from_ne_bytes([byte; CHUNK_SIZE]);
+    let mut current = start;
 
-    let xor_x = x ^ target;
-    let found = xor_x.wrapping_sub(LSB) & !xor_x & MSB;
+    loop {
+        unsafe {
+            let next = current.add(CHUNK_SIZE);
+            if next > end {
+                break;
+            }
 
-    if found == 0 {
-        None
-    } else {
-        Some((found.trailing_zeros() / 8) as usize)
+            // SWAR
+            let x = usize::from_ne_bytes(*current.cast());
+
+            let xor_x = x ^ target;
+            let found = xor_x.wrapping_sub(LSB) & !xor_x & MSB;
+
+            if found != 0 {
+                return Some(
+                    usize::try_from(current.offset_from(start)).unwrap_unchecked()
+                        + (found.trailing_zeros() / 8) as usize,
+                );
+            }
+
+            current = next;
+        }
     }
+
+    while current < end {
+        unsafe {
+            if *current == byte {
+                return Some(usize::try_from(current.offset_from(start)).unwrap_unchecked());
+            }
+            current = current.add(1);
+        }
+    }
+
+    None
 }
 
 pub fn find_nul(chunk: &[u8; CHUNK_SIZE]) -> Option<usize> {
@@ -70,8 +95,4 @@ pub fn find_lt(chunk: [u8; CHUNK_SIZE], byte: u8) -> Option<usize> {
     } else {
         Some((found.trailing_zeros() / 8) as usize)
     }
-}
-
-fn distance(start: *const u8, end: *const u8) -> usize {
-    unsafe { usize::try_from(end.offset_from(start)).unwrap_unchecked() }
 }

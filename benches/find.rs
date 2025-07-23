@@ -1,6 +1,6 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
-use swar_simd::find;
+use swar_simd::{find, find_raw};
 
 const BYTES: [u8; 8192] = {
     let mut ok = [0; 8192];
@@ -20,6 +20,15 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     });
     group.bench_function("find iter", |b| {
         b.iter(|| iter(black_box(&BYTES), black_box(69)))
+    });
+    group.bench_function("find raw", |b| {
+        b.iter(|| unsafe {
+            find_raw(
+                black_box(BYTES.as_ptr()),
+                black_box(BYTES.as_ptr().add(BYTES.len())),
+                black_box(69),
+            )
+        })
     });
 
     group.finish();
