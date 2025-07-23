@@ -64,6 +64,23 @@ fn main() {
     let value = [24, 125, 126, 133, 127, 128, 129, 130];
     let i = find_lt(value, 100).unwrap();
     assert!(value[i] < 100);
+
+    //
+
+    let value = *b"Simd  Sw";
+    assert!(find(value, b'c').is_none());
+
+    let value = *b"Simd  Sw";
+    let i = find(value, b'd').unwrap();
+    assert_eq!(value[i], b'd');
+
+    let value = *b"Simd  Sw";
+    let i = find(value, b'w').unwrap();
+    assert_eq!(value[i], b'w');
+
+    let value = *b"Simd  Sw";
+    let i = find(value, b'S').unwrap();
+    assert_eq!(value[i], b'S');
 }
 
 fn find_nul(chunk: &[u8; CHUNK_SIZE]) -> Option<usize> {
@@ -101,6 +118,20 @@ fn find_lt(chunk: [u8; CHUNK_SIZE], byte: u8) -> Option<usize> {
 
     let eq_b = x.wrapping_sub(b) & !x;
     let found = eq_b & MSB;
+
+    if found == 0 {
+        None
+    } else {
+        Some((found.trailing_zeros() / 8) as usize)
+    }
+}
+
+fn find(chunk: [u8; CHUNK_SIZE], byte: u8) -> Option<usize> {
+    let x = usize::from_ne_bytes(chunk);
+    let target = usize::from_ne_bytes([byte; CHUNK_SIZE]);
+
+    let xor_x = x ^ target;
+    let found = xor_x.wrapping_sub(LSB) & !xor_x & MSB;
 
     if found == 0 {
         None
