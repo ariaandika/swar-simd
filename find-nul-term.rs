@@ -1,5 +1,8 @@
 const CHUNK_SIZE: usize = size_of::<usize>();
 
+const LSB: usize = usize::from_ne_bytes([1; CHUNK_SIZE]);
+const MSB: usize = usize::from_ne_bytes([128; CHUNK_SIZE]);
+
 #[allow(unused)]
 macro_rules! logb {
     ($($tt:tt)*) => {{
@@ -69,7 +72,7 @@ fn find_nul(chunk: &[u8; CHUNK_SIZE]) -> Option<usize> {
     let x2 = x | x << 1;
     let x4 = x2 | x2 << 2;
     let x8 = x4 | x4 << 4;
-    let found = !x8 & 0x8080808080808080;
+    let found = !x8 & MSB;
 
     if found == 0 {
         None
@@ -81,8 +84,8 @@ fn find_nul(chunk: &[u8; CHUNK_SIZE]) -> Option<usize> {
 fn find_nul_v2(chunk: &[u8; CHUNK_SIZE]) -> Option<usize> {
     let x = usize::from_ne_bytes(*chunk);
 
-    let x7 = x.wrapping_sub(0x0101010101010101);
-    let found = x7 & !x & 0x8080808080808080;
+    let x7 = x.wrapping_sub(LSB);
+    let found = x7 & !x & MSB;
 
     if found == 0 {
         None
@@ -93,11 +96,10 @@ fn find_nul_v2(chunk: &[u8; CHUNK_SIZE]) -> Option<usize> {
 
 /// Find the first byte that less than
 fn find_lt(chunk: [u8; CHUNK_SIZE], byte: u8) -> Option<usize> {
-    const MSB: usize = usize::from_ne_bytes([128; CHUNK_SIZE]);
+    let x = usize::from_ne_bytes(chunk);
+    let b = usize::from_ne_bytes([byte; CHUNK_SIZE]);
 
-    let bm = usize::from_ne_bytes([byte; CHUNK_SIZE]);
-    let chunk = usize::from_ne_bytes(chunk);
-    let eq_b = chunk.wrapping_sub(bm) & !chunk;
+    let eq_b = x.wrapping_sub(b) & !x;
     let found = eq_b & MSB;
 
     if found == 0 {
