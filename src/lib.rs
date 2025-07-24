@@ -15,6 +15,8 @@ macro_rules! logb {
     }};
 }
 
+/// Find byte in a bytes.
+#[inline]
 pub fn find(value: &[u8], byte: u8) -> Option<usize> {
     unsafe { find_raw(value.as_ptr(), value.as_ptr().add(value.len()), byte) }
 }
@@ -23,47 +25,43 @@ pub fn find(value: &[u8], byte: u8) -> Option<usize> {
 ///
 /// # Safety
 ///
-/// The `start` pointer must be valid until the pointer right before `end`. The end pointer is
-/// exclusive, just one byte after the last byte.
+/// The `start` pointer must be valid until the pointer right before `end`.
 pub unsafe fn find_raw(start: *const u8, end: *const u8, byte: u8) -> Option<usize> {
     const CHUNK_SIZE: usize = size_of::<usize>();
     const LSB: usize = usize::from_ne_bytes([1; CHUNK_SIZE]);
     const MSB: usize = usize::from_ne_bytes([128; CHUNK_SIZE]);
 
     let target = usize::from_ne_bytes([byte; CHUNK_SIZE]);
+    let max = end as usize;
     let mut current = start;
 
     loop {
-        unsafe {
-            let next = current.add(CHUNK_SIZE);
-            if next > end {
-                break;
-            }
-
-            // SWAR
-            let x = usize::from_ne_bytes(*current.cast());
-
-            let xor_x = x ^ target;
-            let found = xor_x.wrapping_sub(LSB) & !xor_x & MSB;
-
-            if found != 0 {
-                return Some(
-                    usize::try_from(current.offset_from(start)).unwrap_unchecked()
-                        + (found.trailing_zeros() / 8) as usize,
-                );
-            }
-
-            current = next;
+        let next = unsafe { (current as usize).unchecked_add(CHUNK_SIZE) };
+        if next > max {
+            break;
         }
+
+        // SWAR
+        let x = usize::from_ne_bytes(unsafe { *current.cast() });
+
+        let xor_x = x ^ target;
+        let found = xor_x.wrapping_sub(LSB) & !xor_x & MSB;
+
+        if found != 0 {
+            let pos = (found.trailing_zeros() / 8) as usize;
+            let offset = unsafe { usize::try_from(current.offset_from(start)).unwrap_unchecked() };
+
+            return Some(unsafe { offset.unchecked_add(pos) });
+        }
+
+        current = next as _;
     }
 
     while current < end {
-        unsafe {
-            if *current == byte {
-                return Some(usize::try_from(current.offset_from(start)).unwrap_unchecked());
-            }
-            current = current.add(1);
+        if unsafe { *current } == byte {
+            return Some(unsafe { usize::try_from(current.offset_from(start)).unwrap_unchecked() });
         }
+        current = unsafe { current.add(1) };
     }
 
     None

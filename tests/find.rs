@@ -14,41 +14,15 @@ fn test_find() {
     assert_eq!(value[i], b'w');
 
     let value = b"Simd  Swar Example";
-    let i = find(value, b'S').unwrap();
-    assert_eq!(value[i], b'S');
-}
-
-#[test]
-fn test_find_raw() {
-    use swar_simd::find_raw;
-
-    macro_rules! find_raw {
-        ($v:expr, $b:expr) => {
-            unsafe { find_raw($v.as_ptr(), $v.as_ptr().add($v.len()), $b) }
-        };
-    }
-
-    let value = b"Simd  Swar Example";
-    assert!(find_raw!(value, b'c').is_none());
-
-    let value = b"Simd  Swar Example";
-    let i = find_raw!(value, b'd').unwrap();
-    assert_eq!(value[i], b'd');
-
-    let value = b"Simd  Swar Example";
-    let i = find_raw!(value, b'w').unwrap();
-    assert_eq!(value[i], b'w');
-
-    let value = b"Simd  Swar Example";
-    let i = find_raw!(value, b'l').unwrap();
+    let i = find(value, b'l').unwrap();
     assert_eq!(value[i], b'l');
 
     let value = b"Simd  Swar Example";
-    let i = find_raw!(value, b'e').unwrap();
+    let i = find(value, b'e').unwrap();
     assert_eq!(value[i], b'e');
 
     let value = b"Simd  Swar Example";
-    let i = find_raw!(value, b'S').unwrap();
+    let i = find(value, b'S').unwrap();
     assert_eq!(value[i], b'S');
 }
 
