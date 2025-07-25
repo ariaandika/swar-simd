@@ -83,13 +83,17 @@ fn test_find_lt() {
 
     let value = [124, 125, 126, 20, 127, 128, 129, 11];
     let i = find_lt(value, 100).unwrap();
-    assert!(value[i] < 100);
+    assert!(value[i] == 20);
 
     let value = [124, 125, 126, 133, 127, 128, 129, 20];
     let i = find_lt(value, 100).unwrap();
-    assert!(value[i] < 100);
+    assert!(value[i] == 20);
 
     let value = [24, 125, 126, 133, 127, 128, 129, 130];
     let i = find_lt(value, 100).unwrap();
-    assert!(value[i] < 100);
+    assert!(value[i] == 24);
+
+    let value = [255, 125, 126, 0, 127, 128, 129, 11];
+    let i = find_lt(value, 1).unwrap();
+    assert!(value[i] == 0);
 }

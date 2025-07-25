@@ -2,11 +2,7 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
 use swar_simd::find;
 
-const BYTES: [u8; 8192] = {
-    let mut ok = [0; 8192];
-    ok[8191] = 69;
-    ok
-};
+const BYTES: [u8; 8192] = [0; 8192];
 
 fn iter(value: &[u8], byte: u8) -> Option<usize> {
     value.iter().position(|e| e == &byte)
