@@ -37,8 +37,26 @@ pub unsafe fn find_raw(start: *const u8, end: *const u8, byte: u8) -> Option<usi
             break;
         }
 
-        // SWAR
         let x = usize::from_ne_bytes(unsafe { *current.cast() });
+
+        // SWAR
+        //
+        // `x ^ target` all matching bytes will be 0x00
+        //
+        // `xor_x.wrapping_sub(LSB)` matching bytes will wrap to 0xFF
+        // `!xor_x` matching bytes will be 0xFF
+        //
+        // bitwise AND both, resulting:
+        // - matched byte to be 0xFF
+        // - non-matched to be 0x00
+        //
+        // bitwise AND with MSB, resulting only the most
+        // significant bit of the matched byte to be set
+        //
+        // if no match found, all bytes will be 0x00
+        //
+        // otherwise, `.trailing_zeros() / 8` returns
+        // the first byte index that is matched
 
         let xor_x = x ^ target;
         let found = xor_x.wrapping_sub(LSB) & !xor_x & MSB;
@@ -63,7 +81,7 @@ pub unsafe fn find_raw(start: *const u8, end: *const u8, byte: u8) -> Option<usi
     None
 }
 
-/// Find byte in a bytes.
+/// Find the first either 2 byte in a bytes.
 #[inline]
 pub fn find2(value: &[u8], b1: u8, b2: u8) -> Option<usize> {
     unsafe { find2_raw(value.as_ptr(), value.as_ptr().add(value.len()), b1, b2) }
@@ -190,3 +208,4 @@ pub fn find_lt(chunk: [u8; CHUNK_SIZE], target: u8) -> Option<usize> {
         Some((found.trailing_zeros() / 8) as usize)
     }
 }
+
