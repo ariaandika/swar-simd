@@ -1,4 +1,5 @@
 const CHUNK_SIZE: usize = size_of::<usize>();
+const CHUNK_ISIZE: isize = size_of::<usize>() as isize;
 
 const LSB: usize = usize::from_ne_bytes([1; CHUNK_SIZE]);
 const MSB: usize = usize::from_ne_bytes([128; CHUNK_SIZE]);
@@ -206,6 +207,52 @@ pub fn find_lt(chunk: [u8; CHUNK_SIZE], target: u8) -> Option<usize> {
         None
     } else {
         Some((found.trailing_zeros() / 8) as usize)
+    }
+}
+
+
+// Reference
+
+#[allow(unused, reason = "for reference")]
+fn iterate_ptr(start: *const u8, end: *const u8, byte: u8) {
+    let mut current = start;
+
+    unsafe {
+        while current < start {
+            let value = *current;
+
+
+            current = current.add(1);
+        }
+    }
+}
+
+#[allow(unused, reason = "for reference")]
+fn enumerate_ptr(start: *const u8, end: *const u8, byte: u8) {
+    unsafe {
+        let len = end.offset_from(start) as usize;
+        let mut i = 0;
+
+        while i < len {
+            let value = *start.add(i);
+
+
+            i = i.unchecked_add(1);
+        }
+    }
+}
+
+#[allow(unused, reason = "for reference")]
+fn iterate_chunk_ptr(start: *const u8, end: *const u8, byte: u8) {
+    let mut current = start;
+
+    unsafe {
+        while end.offset_from(current) > CHUNK_ISIZE {
+            let chunk = *current.cast::<[u8; CHUNK_SIZE]>();
+
+
+            current = current.add(CHUNK_SIZE);
+        }
     }
 }
 
