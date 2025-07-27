@@ -130,13 +130,59 @@ pub fn find_nul(chunk: &[u8; CHUNK_SIZE]) -> Option<usize> {
     }
 }
 
-/// Find the first byte that less than
-pub fn find_lt(chunk: [u8; CHUNK_SIZE], byte: u8) -> Option<usize> {
-    let x = usize::from_ne_bytes(chunk);
-    let b = usize::from_ne_bytes([byte; CHUNK_SIZE]);
+/// Find the first byte that less than target byte.
+///
+/// This function cannot find target byte that more than 128.
+///
+/// # Panics
+///
+/// Panics if `target > 128`.
+pub fn find_lt(chunk: [u8; CHUNK_SIZE], target: u8) -> Option<usize> {
 
-    let eq_b = x.wrapping_sub(b) & !x;
-    let found = eq_b & MSB;
+    let x = usize::from_ne_bytes(chunk);
+    let b = usize::from_ne_bytes([target; CHUNK_SIZE]);
+
+    // SWAR
+    //
+    // # `x.wrapping_sub(b)`
+    //
+    // the goal is to toggle *target bytes MSB* by subtraction.
+    //
+    // bytes less than target, will wraped, thus toggling MSB.
+    //
+    // # `!x`
+    //
+    // this will toggle all bytes MSB
+    //
+    // # `x.wrapping_sub(b) & !x`
+    //
+    // the *target bytes* will keep the MSB, while other will unset the MSB
+    //
+    // # `& MSB`
+    //
+    // this will only set the most significant byte.
+    //
+    // if no byte found, the result will be exactly 0
+    //
+    // otherwise, any byte found will have its most significant byte set
+    //
+    // # `trailing_zeros() / 8`
+    //
+    // `trailing_zeros()` will returns the amount unset bit until the first set bit,
+    // which the byte that equal to target.
+    //
+    // dividing it by 8, returns the index of found byte
+
+    // # Edge Case
+    //
+    // If `target` is `> 128` and the found byte is also `> 128`,
+    // this algorithm will choke.
+    //
+    // the found byte will be toggled twice, when subtracting pass `128`
+    // and wrapping to 255, which is wrong.
+    assert!(target <= 128);
+
+    let found = x.wrapping_sub(b) & !x & MSB;
 
     if found == 0 {
         None

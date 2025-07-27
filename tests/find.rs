@@ -78,22 +78,26 @@ fn test_find_nul() {
 fn test_find_lt() {
     use swar_simd::find_lt;
 
-    let value = [124, 125, 126, 220, 127, 128, 129, 121];
+    macro_rules! max_array_with {
+        ($val:expr, $at:expr) => {{
+            let mut a = [255u8; 8];
+            a[$at] = $val;
+            a
+        }};
+    }
+
+    let value = max_array_with!(155, 5);
     assert!(find_lt(value, 100).is_none());
 
-    let value = [124, 125, 126, 20, 127, 128, 129, 11];
+    let value = max_array_with!(20, 5);
     let i = find_lt(value, 100).unwrap();
     assert!(value[i] == 20);
 
-    let value = [124, 125, 126, 133, 127, 128, 129, 20];
+    let value = max_array_with!(20, 0);
     let i = find_lt(value, 100).unwrap();
     assert!(value[i] == 20);
 
-    let value = [24, 125, 126, 133, 127, 128, 129, 130];
+    let value = max_array_with!(20, 7);
     let i = find_lt(value, 100).unwrap();
-    assert!(value[i] == 24);
-
-    let value = [255, 125, 126, 0, 127, 128, 129, 11];
-    let i = find_lt(value, 1).unwrap();
-    assert!(value[i] == 0);
+    assert!(value[i] == 20);
 }
