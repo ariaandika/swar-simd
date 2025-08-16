@@ -27,6 +27,34 @@ fn test_find() {
 }
 
 #[test]
+fn test_find_sse() {
+    use swar_simd::find_sse as find;
+
+    let value = b"Simd  Swar Example";
+    assert!(find(value, b'c').is_none());
+
+    let value = b"Simd  Swar Example";
+    let i = find(value, b'd').unwrap();
+    assert_eq!(value[i], b'd');
+
+    let value = b"Simd  Swar Example";
+    let i = find(value, b'w').unwrap();
+    assert_eq!(value[i], b'w');
+
+    let value = b"Simd  Swar Example";
+    let i = find(value, b'l').unwrap();
+    assert_eq!(value[i], b'l');
+
+    let value = b"Simd  Swar Example";
+    let i = find(value, b'e').unwrap();
+    assert_eq!(value[i], b'e');
+
+    let value = b"Simd  Swar Example";
+    let i = find(value, b'S').unwrap();
+    assert_eq!(value[i], b'S');
+}
+
+#[test]
 fn test_find2() {
     use swar_simd::find2;
 

@@ -131,12 +131,7 @@ pub fn find2(value: &[u8], b1: u8, b2: u8) -> Option<usize> {
     unsafe { find2_raw(value.as_ptr(), value.as_ptr().add(value.len()), b1, b2) }
 }
 
-/// Find 2 byte between raw pointer.
-///
-/// # Safety
-///
-/// The `start` pointer must be valid until the pointer right before `end`.
-pub unsafe fn find2_raw(start: *const u8, end: *const u8, b1: u8, b2: u8) -> Option<usize> {
+fn find2_raw(start: *const u8, end: *const u8, b1: u8, b2: u8) -> Option<usize> {
     let t1 = usize::from_ne_bytes([b1; CHUNK_SIZE]);
     let t2 = usize::from_ne_bytes([b2; CHUNK_SIZE]);
     let max = end as usize;

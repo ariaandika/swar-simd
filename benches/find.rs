@@ -1,22 +1,31 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
-use swar_simd::find;
+use swar_simd::{find, find_sse};
 
-const BYTES: [u8; 8192] = [0; 8192];
+const BYTES: [u8; 8192] = {
+    let mut a = [0; 8192];
+    a[8191] = 69;
+    a
+};
 
 fn iter(value: &[u8], byte: u8) -> Option<usize> {
     value.iter().position(|e| e == &byte)
 }
 
+// https://bheisler.github.io/criterion.rs/book/user_guide/comparing_functions.html
 pub fn criterion_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("Find");
 
     group.bench_function("find iter", |b| {
-        b.iter(|| iter(black_box(&BYTES), black_box(69)))
+        b.iter(|| iter(black_box(&BYTES), black_box(69)).unwrap())
     });
 
     group.bench_function("find swar", |b| {
-        b.iter(|| find(black_box(&BYTES), black_box(69)))
+        b.iter(|| find(black_box(&BYTES), black_box(69)).unwrap())
+    });
+
+    group.bench_function("find sse", |b| {
+        b.iter(|| find_sse(black_box(&BYTES), black_box(69)).unwrap())
     });
 
     group.finish();
