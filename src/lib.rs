@@ -11,6 +11,17 @@ macro_rules! logb {
         for b in res.to_ne_bytes() {
             print!("{b:0>8b} ");
         }
+        res
+    }};
+}
+
+#[allow(unused)]
+macro_rules! logbln {
+    ($($tt:tt)*) => {{
+        let res = $($tt)*;
+        for b in res.to_ne_bytes() {
+            print!("{b:0>8b} ");
+        }
         println!();
         res
     }};
@@ -248,6 +259,33 @@ pub fn find_lt(chunk: [u8; CHUNK_SIZE], target: u8) -> Option<usize> {
     }
 }
 
+pub fn find_lt_128(chunk: [u8; CHUNK_SIZE]) -> Option<usize> {
+    let x = usize::from_ne_bytes(chunk);
+
+    // if the MSB is set, then `byte >= 128`
+    let found = x & MSB;
+
+    if found == 0 {
+        None
+    } else {
+        Some((found.trailing_zeros() / 8) as usize)
+    }
+}
+
+// 127 exclusive
+pub fn byte_between_32_to_127(byte: u8) -> bool {
+    let off1 = byte.wrapping_sub(32);
+
+    // 32(SP) < byte, none of MSB should be flipped
+    let off1_result = off1 & !byte;
+
+    // byte < ( 127(DEL) - 32 ), none of MSB should be flipped
+    let off2_result = off1.wrapping_sub(127 - 32) & !off1;
+
+    let result = (off1_result | !off2_result) & 128;
+
+    result == 0
+}
 
 // Reference
 

@@ -129,3 +129,19 @@ fn test_find_lt() {
     let i = find_lt(value, 100).unwrap();
     assert!(value[i] == 20);
 }
+
+#[test]
+fn test_only() {
+    use swar_simd::byte_between_32_to_127;
+
+    for byte in 32..127 {
+        assert!(byte_between_32_to_127(byte));
+    }
+    for byte in 0..32 {
+        assert!(!byte_between_32_to_127(byte));
+    }
+    for byte in 127..=255 {
+        assert!(!byte_between_32_to_127(byte));
+    }
+}
+
