@@ -1,6 +1,11 @@
+pub mod swar;
+
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+pub mod sse;
+
+// Reference
 
 const CHUNK_SIZE: usize = size_of::<usize>();
-const CHUNK_ISIZE: isize = size_of::<usize>() as isize;
 
 #[allow(unused)]
 macro_rules! logb {
@@ -25,19 +30,12 @@ macro_rules! logbln {
     }};
 }
 
-pub mod swar;
-
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-pub mod sse;
-
-// Reference
-
 #[allow(unused, reason = "for reference")]
-fn iterate_ptr(start: *const u8, end: *const u8, byte: u8) {
+fn iterate_ptr(start: *const u8, end: *const u8) {
     let mut current = start;
 
     unsafe {
-        while current < start {
+        while current < end {
             let value = *current;
 
 
@@ -47,9 +45,9 @@ fn iterate_ptr(start: *const u8, end: *const u8, byte: u8) {
 }
 
 #[allow(unused, reason = "for reference")]
-fn enumerate_ptr(start: *const u8, end: *const u8, byte: u8) {
+fn enumerate_ptr(start: *const u8, end: *const u8) {
     unsafe {
-        let len = end.offset_from(start) as usize;
+        let len = end.offset_from_unsigned(start);
         let mut i = 0;
 
         while i < len {
@@ -62,11 +60,11 @@ fn enumerate_ptr(start: *const u8, end: *const u8, byte: u8) {
 }
 
 #[allow(unused, reason = "for reference")]
-fn iterate_chunk_ptr(start: *const u8, end: *const u8, byte: u8) {
+fn iterate_chunk_ptr(start: *const u8, end: *const u8) {
     let mut current = start;
 
     unsafe {
-        while end.offset_from(current) > CHUNK_ISIZE {
+        while end.offset_from_unsigned(current) >= CHUNK_SIZE {
             let chunk = *current.cast::<[u8; CHUNK_SIZE]>();
 
 

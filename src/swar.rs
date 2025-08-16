@@ -14,7 +14,7 @@ pub fn find(value: &[u8], byte: u8) -> Option<usize> {
 /// # Safety
 ///
 /// The `start` pointer must be valid until the pointer right before `end`.
-pub unsafe fn find_raw(start: *const u8, end: *const u8, byte: u8) -> Option<usize> {
+unsafe fn find_raw(start: *const u8, end: *const u8, byte: u8) -> Option<usize> {
     let target = usize::from_ne_bytes([byte; CHUNK_SIZE]);
     let max = end as usize;
     let mut current = start;
@@ -51,7 +51,7 @@ pub unsafe fn find_raw(start: *const u8, end: *const u8, byte: u8) -> Option<usi
 
         if found != 0 {
             let pos = (found.trailing_zeros() / 8) as usize;
-            let offset = unsafe { current.offset_from(start) as usize };
+            let offset = unsafe { current.offset_from_unsigned(start) };
 
             return Some(unsafe { offset.unchecked_add(pos) });
         }
@@ -61,7 +61,7 @@ pub unsafe fn find_raw(start: *const u8, end: *const u8, byte: u8) -> Option<usi
 
     while current < end {
         if unsafe { *current } == byte {
-            return Some(unsafe { current.offset_from(start) as usize });
+            return Some(unsafe { current.offset_from_unsigned(start) });
         }
         current = unsafe { current.add(1) };
     }
@@ -100,7 +100,7 @@ fn find2_raw(start: *const u8, end: *const u8, b1: u8, b2: u8) -> Option<usize> 
 
         if found != 0 {
             let pos = (found.trailing_zeros() / 8) as usize;
-            let offset = unsafe { current.offset_from(start) as usize };
+            let offset = unsafe { current.offset_from_unsigned(start) };
 
             return Some(unsafe { offset.unchecked_add(pos) });
         }
@@ -110,7 +110,7 @@ fn find2_raw(start: *const u8, end: *const u8, b1: u8, b2: u8) -> Option<usize> 
 
     while current < end {
         if unsafe { *current } == b1 {
-            return Some(unsafe { current.offset_from(start) as usize });
+            return Some(unsafe { current.offset_from_unsigned(start) });
         }
         current = unsafe { current.add(1) };
     }
