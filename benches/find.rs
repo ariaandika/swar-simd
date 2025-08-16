@@ -1,6 +1,6 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
-use swar_simd::{find, find_sse};
+use swar_simd::{swar, sse};
 
 const BYTES: [u8; 8192] = {
     let mut a = [0; 8192];
@@ -21,11 +21,11 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     });
 
     group.bench_function("find swar", |b| {
-        b.iter(|| find(black_box(&BYTES), black_box(69)).unwrap())
+        b.iter(|| swar::find(black_box(&BYTES), black_box(69)).unwrap())
     });
 
     group.bench_function("find sse", |b| {
-        b.iter(|| find_sse(black_box(&BYTES), black_box(69)).unwrap())
+        b.iter(|| sse::find(black_box(&BYTES), black_box(69)).unwrap())
     });
 
     group.finish();

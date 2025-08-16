@@ -1,6 +1,6 @@
 #[test]
 fn test_find() {
-    use swar_simd::find;
+    use swar_simd::swar::find;
 
     let value = b"Simd  Swar Example";
     assert!(find(value, b'c').is_none());
@@ -28,7 +28,7 @@ fn test_find() {
 
 #[test]
 fn test_find_sse() {
-    use swar_simd::find_sse as find;
+    use swar_simd::sse::find;
 
     let value = b"Simd  Swar Example";
     assert!(find(value, b'c').is_none());
@@ -56,7 +56,7 @@ fn test_find_sse() {
 
 #[test]
 fn test_find2() {
-    use swar_simd::find2;
+    use swar_simd::swar::find2;
 
     let value = b"Simd  Swar Example";
     assert!(find2(value, b'c', b'z').is_none());
@@ -84,7 +84,7 @@ fn test_find2() {
 
 #[test]
 fn test_find_nul() {
-    use swar_simd::find_nul;
+    use swar_simd::swar::find_nul;
 
     let value = b"Simd Sw0";
     assert!(find_nul(value).is_none());
@@ -104,7 +104,7 @@ fn test_find_nul() {
 
 #[test]
 fn test_find_lt() {
-    use swar_simd::find_lt;
+    use swar_simd::swar::find_lt;
 
     macro_rules! max_array_with {
         ($val:expr, $at:expr) => {{
@@ -132,7 +132,7 @@ fn test_find_lt() {
 
 #[test]
 fn test_only() {
-    use swar_simd::byte_between_32_to_127;
+    use swar_simd::swar::byte_between_32_to_127;
 
     for byte in 32..127 {
         assert!(byte_between_32_to_127(byte));
