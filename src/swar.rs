@@ -1,32 +1,18 @@
-const CHUNK_SIZE: usize = size_of::<usize>();
-
-const LSB: usize = usize::from_ne_bytes([1; CHUNK_SIZE]);
-const MSB: usize = usize::from_ne_bytes([128; CHUNK_SIZE]);
+const BLOCK: usize = size_of::<usize>();
+const LSB: usize = usize::from_ne_bytes([1; BLOCK]);
+const MSB: usize = usize::from_ne_bytes([128; BLOCK]);
 
 /// Find byte in a bytes.
 #[inline]
 pub fn find(value: &[u8], byte: u8) -> Option<usize> {
-    unsafe { find_raw(value.as_ptr(), value.as_ptr().add(value.len()), byte) }
-}
+    let target = usize::from_ne_bytes([byte; BLOCK]);
+    let start = value.as_ptr();
+    let end = unsafe { value.as_ptr().add(value.len()) };
+    let max = end.addr();
 
-/// Find byte between raw pointer.
-///
-/// # Safety
-///
-/// The `start` pointer must be valid until the pointer right before `end`.
-unsafe fn find_raw(start: *const u8, end: *const u8, byte: u8) -> Option<usize> {
-    let target = usize::from_ne_bytes([byte; CHUNK_SIZE]);
-    let max = end as usize;
-    let mut current = start;
+    let mut current = value.as_ptr();
 
-    loop {
-        let next = unsafe { (current as usize).unchecked_add(CHUNK_SIZE) };
-        if next > max {
-            break;
-        }
-
-        let x = usize::from_ne_bytes(unsafe { *current.cast() });
-
+    while current.addr() + BLOCK <= max {
         // SWAR
         //
         // `x ^ target` all matching bytes will be 0x00
@@ -46,17 +32,19 @@ unsafe fn find_raw(start: *const u8, end: *const u8, byte: u8) -> Option<usize> 
         // otherwise, `.trailing_zeros() / 8` returns
         // the first byte index that is matched
 
-        let xor_x = x ^ target;
-        let found = xor_x.wrapping_sub(LSB) & !xor_x & MSB;
+        let block = usize::from_ne_bytes(unsafe { *current.cast() });
 
-        if found != 0 {
-            let pos = (found.trailing_zeros() / 8) as usize;
+        let xor_x = block ^ target;
+        let result = xor_x.wrapping_sub(LSB) & !xor_x & MSB;
+
+        if result != 0 {
+            let pos = (result.trailing_zeros() / 8) as usize;
             let offset = unsafe { current.offset_from_unsigned(start) };
 
             return Some(unsafe { offset.unchecked_add(pos) });
         }
 
-        current = next as _;
+        current = unsafe { current.add(BLOCK) }
     }
 
     while current < end {
@@ -72,40 +60,32 @@ unsafe fn find_raw(start: *const u8, end: *const u8, byte: u8) -> Option<usize> 
 /// Find the first either 2 byte in a bytes.
 #[inline]
 pub fn find2(value: &[u8], b1: u8, b2: u8) -> Option<usize> {
-    unsafe { find2_raw(value.as_ptr(), value.as_ptr().add(value.len()), b1, b2) }
-}
+    let t1 = usize::from_ne_bytes([b1; BLOCK]);
+    let t2 = usize::from_ne_bytes([b2; BLOCK]);
+    let start = value.as_ptr();
+    let end = unsafe { value.as_ptr().add(value.len()) };
+    let max = end.addr();
 
-fn find2_raw(start: *const u8, end: *const u8, b1: u8, b2: u8) -> Option<usize> {
-    let t1 = usize::from_ne_bytes([b1; CHUNK_SIZE]);
-    let t2 = usize::from_ne_bytes([b2; CHUNK_SIZE]);
-    let max = end as usize;
     let mut current = start;
 
-    loop {
-        let next = unsafe { (current as usize).unchecked_add(CHUNK_SIZE) };
-        if next > max {
-            break;
-        }
+    while current.addr() + BLOCK <= max {
+        let block = usize::from_ne_bytes(unsafe { *current.cast() });
 
-        // SWAR
-        let x = usize::from_ne_bytes(unsafe { *current.cast() });
+        let xor_1 = block ^ t1;
+        let result_1 = xor_1.wrapping_sub(LSB) & !xor_1;
 
-        let xor_x = x ^ t1;
-        let found_x = xor_x.wrapping_sub(LSB) & !xor_x;
+        let xor_2 = block ^ t2;
+        let result_2 = xor_2.wrapping_sub(LSB) & !xor_2;
 
-        let xor_y = x ^ t2;
-        let found_y = xor_y.wrapping_sub(LSB) & !xor_y;
-
-        let found = (found_x | found_y) & MSB;
-
-        if found != 0 {
-            let pos = (found.trailing_zeros() / 8) as usize;
+        let result = (result_1 | result_2) & MSB;
+        if result != 0 {
+            let pos = (result.trailing_zeros() / 8) as usize;
             let offset = unsafe { current.offset_from_unsigned(start) };
 
             return Some(unsafe { offset.unchecked_add(pos) });
         }
 
-        current = next as _;
+        current = unsafe { current.add(BLOCK) }
     }
 
     while current < end {
@@ -118,18 +98,9 @@ fn find2_raw(start: *const u8, end: *const u8, b1: u8, b2: u8) -> Option<usize> 
     None
 }
 
-pub fn find_nul(chunk: &[u8; CHUNK_SIZE]) -> Option<usize> {
-    let x = usize::from_ne_bytes(*chunk);
 
-    let x7 = x.wrapping_sub(LSB);
-    let found = x7 & !x & MSB;
+// Specific
 
-    if found == 0 {
-        None
-    } else {
-        Some((found.trailing_zeros() / 8) as usize)
-    }
-}
 
 /// Find the first byte that less than target byte.
 ///
@@ -138,10 +109,9 @@ pub fn find_nul(chunk: &[u8; CHUNK_SIZE]) -> Option<usize> {
 /// # Panics
 ///
 /// Panics if `target > 128`.
-pub fn find_lt(chunk: [u8; CHUNK_SIZE], target: u8) -> Option<usize> {
-
+pub fn find_lt(chunk: [u8; BLOCK], target: u8) -> Option<usize> {
     let x = usize::from_ne_bytes(chunk);
-    let b = usize::from_ne_bytes([target; CHUNK_SIZE]);
+    let b = usize::from_ne_bytes([target; BLOCK]);
 
     // SWAR
     //
@@ -192,7 +162,7 @@ pub fn find_lt(chunk: [u8; CHUNK_SIZE], target: u8) -> Option<usize> {
     }
 }
 
-pub fn find_lt_128(chunk: [u8; CHUNK_SIZE]) -> Option<usize> {
+pub fn find_lt_128(chunk: [u8; BLOCK]) -> Option<usize> {
     let x = usize::from_ne_bytes(chunk);
 
     // if the MSB is set, then `byte >= 128`
@@ -205,17 +175,15 @@ pub fn find_lt_128(chunk: [u8; CHUNK_SIZE]) -> Option<usize> {
     }
 }
 
-// 127 exclusive
-pub fn byte_between_32_to_127(byte: u8) -> bool {
-    let off1 = byte.wrapping_sub(32);
+pub fn find_nul(chunk: &[u8; BLOCK]) -> Option<usize> {
+    let x = usize::from_ne_bytes(*chunk);
 
-    // 32(SP) < byte, none of MSB should be flipped
-    let off1_result = off1 & !byte;
+    let x7 = x.wrapping_sub(LSB);
+    let found = x7 & !x & MSB;
 
-    // byte < ( 127(DEL) - 32 ), none of MSB should be flipped
-    let off2_result = off1.wrapping_sub(127 - 32) & !off1;
-
-    let result = (off1_result | !off2_result) & 128;
-
-    result == 0
+    if found == 0 {
+        None
+    } else {
+        Some((found.trailing_zeros() / 8) as usize)
+    }
 }
