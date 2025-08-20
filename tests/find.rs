@@ -27,6 +27,69 @@ fn test_find() {
 }
 
 #[test]
+fn test_find_non_printable_ascii() {
+    use swar_simd::swar::find_non_printable_ascii as find;
+
+    // multiply of pointer size
+    assert!(find(&[b' '; 16]).is_none());
+    assert!(find(&[b'~'; 16]).is_none());
+
+    assert_eq!(find(&[0; 16]), Some(0));
+    assert_eq!(find(&[0b0111_1111; 16]), Some(0));
+    assert_eq!(find(&[0b1000_0000; 16]), Some(0));
+    assert_eq!(find(&[u8::MAX; 16]), Some(0));
+
+    let mut bytes = [b' '; 16];
+    bytes[2] = 31;
+    assert_eq!(find(&bytes), Some(2));
+    bytes[2] = 0b0111_1111;
+    assert_eq!(find(&bytes), Some(2));
+    bytes[2] = 0b1000_0000;
+    assert_eq!(find(&bytes), Some(2));
+    bytes[2] = u8::MAX;
+    assert_eq!(find(&bytes), Some(2));
+
+    let mut bytes = [b' '; 16];
+    *bytes.last_mut().unwrap() = 31;
+    assert_eq!(find(&bytes), Some(15));
+    *bytes.last_mut().unwrap() = 0b0111_1111;
+    assert_eq!(find(&bytes), Some(15));
+    *bytes.last_mut().unwrap() = 0b1000_0000;
+    assert_eq!(find(&bytes), Some(15));
+    *bytes.last_mut().unwrap() = u8::MAX;
+    assert_eq!(find(&bytes), Some(15));
+
+    // non multiply of pointer size
+    assert!(find(&[b' '; 15]).is_none());
+    assert!(find(&[b'~'; 15]).is_none());
+
+    assert_eq!(find(&[0; 15]), Some(0));
+    assert_eq!(find(&[0b0111_1111; 15]), Some(0));
+    assert_eq!(find(&[0b1000_0000; 15]), Some(0));
+    assert_eq!(find(&[u8::MAX; 15]), Some(0));
+
+    let mut bytes = [b' '; 15];
+    bytes[9] = 31;
+    assert_eq!(find(&bytes), Some(9));
+    bytes[9] = 0b0111_1111;
+    assert_eq!(find(&bytes), Some(9));
+    bytes[9] = 0b1000_0000;
+    assert_eq!(find(&bytes), Some(9));
+    bytes[9] = u8::MAX;
+    assert_eq!(find(&bytes), Some(9));
+
+    let mut bytes = [b' '; 15];
+    bytes[14] = 31;
+    assert_eq!(find(&bytes), Some(14));
+    bytes[14] = 0b0111_1111;
+    assert_eq!(find(&bytes), Some(14));
+    bytes[14] = 0b1000_0000;
+    assert_eq!(find(&bytes), Some(14));
+    bytes[14] = u8::MAX;
+    assert_eq!(find(&bytes), Some(14));
+}
+
+#[test]
 fn test_find_sse() {
     use swar_simd::sse::find;
 
@@ -128,20 +191,5 @@ fn test_find_lt() {
     let value = max_array_with!(20, 7);
     let i = find_lt(value, 100).unwrap();
     assert!(value[i] == 20);
-}
-
-#[test]
-fn test_only() {
-    use swar_simd::swar::byte_between_32_to_127;
-
-    for byte in 32..127 {
-        assert!(byte_between_32_to_127(byte));
-    }
-    for byte in 0..32 {
-        assert!(!byte_between_32_to_127(byte));
-    }
-    for byte in 127..=255 {
-        assert!(!byte_between_32_to_127(byte));
-    }
 }
 
