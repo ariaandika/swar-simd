@@ -5,6 +5,8 @@ const BLOCK: usize = size_of::<usize>();
 const LSB: usize = usize::from_ne_bytes([1; BLOCK]);
 const MSB: usize = usize::from_ne_bytes([128; BLOCK]);
 
+const CR: usize = usize::from_ne_bytes([b'\r'; BLOCK]);
+const LF: usize = usize::from_ne_bytes([b'\n'; BLOCK]);
 const SP: usize = usize::from_ne_bytes([b' '; BLOCK]);
 const DEL: usize = usize::from_ne_bytes([127; 8]);
 
@@ -153,6 +155,61 @@ pub fn find_non_printable_ascii(value: &[u8]) -> Option<usize> {
 
 // Specific
 
+
+// combine multiple matcher
+#[inline]
+pub fn find_combine(value: &[u8]) -> Option<usize> {
+    let start = value.as_ptr();
+    let end = unsafe { start.add(value.len()) };
+    let max = end.addr();
+
+    let mut current = start;
+
+    while current.addr() + BLOCK <= max {
+        let block = usize::from_ne_bytes(unsafe { *current.cast() });
+
+        // look for "\r"
+        let is_cr = block ^ CR;
+        let is_cr = is_cr.wrapping_sub(LSB) & !is_cr;
+
+        // look for "\n"
+        let is_lf = block ^ LF;
+        let is_lf = is_lf.wrapping_sub(LSB) & !is_lf;
+
+        // look for 127(DEL)
+        let not_del = block ^ DEL;
+        let not_del = not_del.wrapping_sub(LSB) & !not_del;
+
+        // 32(SP) <= byte, if sub wrapped, MSB is set
+        let lt_32 = block.wrapping_sub(SP) & !block;
+
+        // NOTE:
+        // if MSB is set on `block`, value is >= 128
+
+        let result = (block | is_cr | is_lf | not_del | lt_32) & MSB;
+        if result != 0 {
+            let pos = (result.trailing_zeros() / 8) as usize;
+            let offset = unsafe { current.offset_from_unsigned(start) };
+            return Some(offset + pos);
+        }
+
+        current = unsafe { current.add(BLOCK) };
+    }
+
+    unsafe {
+        find_combine_scalar(std::slice::from_raw_parts(
+            current,
+            end.offset_from_unsigned(current),
+        ))
+    }
+}
+
+#[inline]
+pub fn find_combine_scalar(value: &[u8]) -> Option<usize> {
+    value
+        .iter()
+        .position(|b| matches!(b, b'\n' | b'\r') || !matches!(b, b'!'..=b'~'))
+}
 
 /// Find the first byte that less than target byte.
 ///
