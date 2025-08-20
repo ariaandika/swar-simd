@@ -2,9 +2,11 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
 use swar_simd::{swar, sse};
 
-const BYTES: [u8; 8192] = {
-    let mut a = [0; 8192];
-    a[8191] = 69;
+const MB: usize = 0x100000;
+
+static BYTES: [u8; 2 * MB] = {
+    let mut a = [0; 2 * MB];
+    *a.last_mut().unwrap() = 69;
     a
 };
 
