@@ -1,6 +1,12 @@
+#[allow(unused_imports)]
+use super::{logb, logbln, logbyln};
+
 const BLOCK: usize = size_of::<usize>();
 const LSB: usize = usize::from_ne_bytes([1; BLOCK]);
 const MSB: usize = usize::from_ne_bytes([128; BLOCK]);
+
+const SP: usize = usize::from_ne_bytes([b' '; BLOCK]);
+const DEL: usize = usize::from_ne_bytes([127; 8]);
 
 /// Find byte in a bytes.
 #[inline]
@@ -93,6 +99,52 @@ pub fn find2(value: &[u8], b1: u8, b2: u8) -> Option<usize> {
             return Some(unsafe { current.offset_from_unsigned(start) });
         }
         current = unsafe { current.add(1) };
+    }
+
+    None
+}
+
+// b' '..=b'~'
+//
+// can be used as search in between byte range
+pub fn find_non_printable_ascii(value: &[u8]) -> Option<usize> {
+    let start = value.as_ptr();
+    let end = unsafe { start.add(value.len()) };
+    let max = end.addr();
+
+    let mut current = start;
+
+    while current.addr() + BLOCK <= max {
+        // SWAR
+        let block = usize::from_ne_bytes(unsafe { *current.cast() });
+
+        // byte != 127(DEL)
+        let not_del = block ^ DEL;
+        let not_del = not_del.wrapping_sub(LSB) & !not_del;
+
+        // 32(SP) <= byte
+        let lt_32 = block.wrapping_sub(SP) & !block;
+
+        // NOTE:
+        // if MSB is set on `block`, value is >= 128
+
+        let result = (block | not_del | lt_32) & MSB;
+        if result != 0 {
+            let pos = (result.trailing_zeros() / 8) as usize;
+            let offset = unsafe { current.offset_from_unsigned(start) };
+            return Some(offset + pos);
+        }
+
+        current = unsafe { current.add(BLOCK) }
+    }
+
+    while current < end {
+        unsafe {
+            if !matches!(*current, b' '..=b'~') {
+                return Some(current.offset_from_unsigned(start));
+            }
+            current = current.add(1);
+        }
     }
 
     None
