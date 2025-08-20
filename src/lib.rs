@@ -30,6 +30,23 @@ macro_rules! logbln {
     }};
 }
 
+#[allow(unused)]
+macro_rules! logbyln {
+    ($($tt:tt)*) => {{
+        let res = $($tt)*;
+        for b in res.to_ne_bytes() {
+            print!("{b} ");
+        }
+        println!();
+        res
+    }};
+}
+
+
+
+#[allow(unused)]
+pub(crate) use {logb, logbln, logbyln};
+
 #[allow(unused, reason = "for reference")]
 fn iterate_ptr(start: *const u8, end: *const u8) {
     let mut current = start;
