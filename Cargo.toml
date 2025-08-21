@@ -11,3 +11,7 @@ criterion = "0.6.0"
 [[bench]]
 name = "find"
 harness = false
+
+[[bench]]
+name = "find_combine"
+harness = false
