@@ -234,6 +234,9 @@ pub fn find_lt(chunk: [u8; BLOCK], target: u8) -> Option<usize> {
     //
     // this will toggle all bytes MSB
     //
+    // if the value have its MSB set (>= 128), it will be unset,
+    // thus will never be selected becase `x & 0` is always 0.
+    //
     // # `x.wrapping_sub(b) & !x`
     //
     // the *target bytes* will keep the MSB, while other will unset the MSB
