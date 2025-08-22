@@ -40,6 +40,11 @@ pub fn find(value: &[u8], byte: u8) -> Option<usize> {
         // otherwise, `.trailing_zeros() / 8` returns
         // the first byte index that is matched
 
+        // # Optimize
+        //
+        // if the block is checked that it is `< 128`,
+        // `& !xor_x` can be dropped
+
         let block = usize::from_ne_bytes(unsafe { *current.cast() });
 
         let xor_x = block ^ target;
