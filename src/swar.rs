@@ -129,7 +129,7 @@ pub fn find_non_printable_ascii(value: &[u8]) -> Option<usize> {
         let not_del = block ^ DEL;
         let not_del = not_del.wrapping_sub(LSB) & !not_del;
 
-        // 32(SP) <= byte
+        // 32(SP) < byte
         let lt_32 = block.wrapping_sub(SP) & !block;
 
         // NOTE:
